@@ -2,10 +2,7 @@
 
 A custom status line for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that displays context window usage, git branch, and API quota burn rates via [ccburn](https://github.com/JuanjoFuchs/ccburn) — with a cool-to-warm color gradient.
 
-```
-ctx:42%    main    session: 12%_~ 45m    weekly: 55%_~ (23%)    sonnet: 8%_!
-[dynamic]  MAG     BLU      CYN   TEAL   GRN     LIME  YEL     ORG     RED
-```
+![Claude Code status line screenshot](screenshot.png)
 
 ## What it shows
 
