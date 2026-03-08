@@ -119,7 +119,7 @@ if [ -f "$CACHE_FILE" ]; then
     # Weekly time elapsed: % of reset-to-reset window
     reset_offset=$(( RESET_DAY * 86400 + RESET_HOUR * 3600 - 86400 ))
     dow=$(date +%u)  # 1=Mon..7=Sun
-    h=$(date +%H); m=$(date +%M)
+    h=$((10#$(date +%H))); m=$((10#$(date +%M)))
     secs_since_reset=$(( (dow - 1) * 86400 + h * 3600 + m * 60 - reset_offset ))
     if [ "$secs_since_reset" -lt 0 ]; then
       secs_since_reset=$(( secs_since_reset + 604800 ))
