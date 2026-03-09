@@ -121,6 +121,10 @@ Claude Code pipes JSON to the status line command via stdin on each render. The 
 
 The ccburn cache refreshes in the background every 2 minutes (configurable) to avoid blocking the status line render.
 
+### Expired window handling
+
+When the Anthropic API returns stale data during a weekly window rollover (utilization still showing last week's value after `resets_at` has passed), the script detects negative `resets_in_hours` values in ccburn's JSON output and overrides the display to 0%. This prevents showing misleading high-usage numbers at the start of a fresh window.
+
 ## License
 
 MIT
