@@ -84,17 +84,26 @@ DIM=$'\033[2m'
 # --- Parse ccburn JSON cache (single jq call) ---
 quota_str=""
 if [ -f "$CACHE_FILE" ]; then
-  read -r sess_pct sess_status sess_reset week_pct week_status sonn_pct sonn_status < <(
+  read -r sess_pct sess_status sess_reset sess_reset_hrs week_pct week_status week_reset_hrs sonn_pct sonn_status sonn_reset_hrs < <(
     "$JQ" -r '[
       (.limits.session.utilization // 0 | . * 100 | round),
       (.limits.session.status // "-"),
       (.limits.session.resets_in_minutes // ""),
+      (.limits.session.resets_in_hours // 0),
       (.limits.weekly.utilization // 0 | . * 100 | round),
       (.limits.weekly.status // "-"),
+      (.limits.weekly.resets_in_hours // 0),
       (.limits."weekly-sonnet".utilization // 0 | . * 100 | round),
-      (.limits."weekly-sonnet".status // "-")
+      (.limits."weekly-sonnet".status // "-"),
+      (.limits."weekly-sonnet".resets_in_hours // 0)
     ] | join(" ")' "$CACHE_FILE" 2>/dev/null
   )
+
+  # If a window has expired (negative time remaining), the API returned stale
+  # data during a window rollover. Override to 0% until API catches up.
+  case "$sess_reset_hrs" in -*) sess_pct=0 ;; esac
+  case "$week_reset_hrs" in -*) week_pct=0 ;; esac
+  case "$sonn_reset_hrs" in -*) sonn_pct=0 ;; esac
 
   # Pace indicator: behind=~, on==, ahead=!
   pace_icon() {
