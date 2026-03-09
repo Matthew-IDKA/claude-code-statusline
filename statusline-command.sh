@@ -20,7 +20,10 @@ CCBURN="ccburn"
 
 # ccburn cache location and refresh interval (seconds)
 CACHE_FILE="$HOME/.claude/.ccburn-cache"
-CACHE_MAX_AGE=120
+CACHE_MAX_AGE=900  # 15 minutes — see "Rate limit awareness" in README
+
+# Rate limit sentinel file (created when ccburn refresh fails)
+RL_FLAG="$HOME/.claude/.ccburn-ratelimited"
 
 # Weekly budget reset: day of week (1=Monday .. 7=Sunday) and hour (0-23)
 RESET_DAY=1   # Monday
@@ -51,8 +54,10 @@ fi
 
 # --- ccburn quota (cached, refreshed every CACHE_MAX_AGE seconds) ---
 need_refresh=1
+cache_age=999999
 if [ -f "$CACHE_FILE" ]; then
-  cache_age=$(( $(date +%s) - $(date -r "$CACHE_FILE" +%s 2>/dev/null || echo 0) ))
+  cache_mtime=$(date -r "$CACHE_FILE" +%s 2>/dev/null || echo 0)
+  cache_age=$(( $(date +%s) - cache_mtime ))
   if [ "$cache_age" -lt "$CACHE_MAX_AGE" ]; then
     need_refresh=0
   fi
@@ -62,6 +67,10 @@ if [ "$need_refresh" -eq 1 ]; then
   quota=$("$CCBURN" --json --once 2>/dev/null)
   if [ -n "$quota" ]; then
     echo "$quota" > "$CACHE_FILE"
+    rm -f "$RL_FLAG"
+    cache_age=0
+  else
+    touch "$RL_FLAG"
   fi
 fi
 
@@ -105,6 +114,14 @@ if [ -f "$CACHE_FILE" ]; then
   case "$week_reset_hrs" in -*) week_pct=0 ;; esac
   case "$sonn_reset_hrs" in -*) sonn_pct=0 ;; esac
 
+  # --- Interpolate session timer from local clock ---
+  # Between API polls, subtract elapsed minutes so the timer ticks down live.
+  elapsed_min=$(( cache_age / 60 ))
+  if [ -n "$sess_reset" ] && [ "$sess_reset" -gt 0 ] 2>/dev/null; then
+    sess_reset=$(( sess_reset - elapsed_min ))
+    [ "$sess_reset" -lt 0 ] && sess_reset=0
+  fi
+
   # Pace indicator: behind=~, on==, ahead=!
   pace_icon() {
     case "$1" in
@@ -140,7 +157,13 @@ if [ -f "$CACHE_FILE" ]; then
       reset_part=" ${TEAL}${reset_str}${RESET}"
     fi
 
-    quota_str="${BLUE}session: ${CYAN}${sess_pct}%_${si}${RESET}${reset_part}    ${GREEN}weekly: ${LIME}${week_pct}%_${wi}${RESET} ${YELLOW}(${time_pct}%)${RESET}    ${ORANGE}sonnet: ${RED}${sonn_pct}%_${ni}${RESET}"
+    # Rate limit indicator (invisible unless flagged)
+    rl_str=""
+    if [ -f "$RL_FLAG" ]; then
+      rl_str="    ${RED}${BOLD}[RL]${RESET}"
+    fi
+
+    quota_str="${BLUE}session: ${CYAN}${sess_pct}%_${si}${RESET}${reset_part}    ${GREEN}weekly: ${LIME}${week_pct}%_${wi}${RESET} ${YELLOW}(${time_pct}%)${RESET}    ${ORANGE}sonnet: ${RED}${sonn_pct}%_${ni}${RESET}${rl_str}"
   fi
 fi
 
