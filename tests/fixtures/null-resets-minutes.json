@@ -1,0 +1,26 @@
+{
+  "_comment": "Regression fixture: session.resets_in_minutes=null caused jq empty-string in join, read collapsed the double-space, shifting week_pct to the status string value.",
+  "limits": {
+    "session": {
+      "utilization": 0.0,
+      "status": null,
+      "resets_in_minutes": null,
+      "resets_in_hours": null,
+      "window_hours": 5
+    },
+    "weekly": {
+      "utilization": 0.41,
+      "status": "behind_pace",
+      "resets_in_minutes": null,
+      "resets_in_hours": 91.65,
+      "window_hours": 168
+    },
+    "weekly-sonnet": {
+      "utilization": 0.37,
+      "status": "on_pace",
+      "resets_in_minutes": null,
+      "resets_in_hours": 101.65,
+      "window_hours": 168
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "_comment": "Expired window fixture: negative resets_in_hours signals stale API data during window rollover. The script's case statement should override pct to 0.",
+  "limits": {
+    "session": {
+      "utilization": 0.84,
+      "status": "on_pace",
+      "resets_in_minutes": null,
+      "resets_in_hours": -0.5,
+      "window_hours": 5
+    },
+    "weekly": {
+      "utilization": 0.95,
+      "status": "ahead_pace",
+      "resets_in_minutes": null,
+      "resets_in_hours": -2.5,
+      "window_hours": 168
+    },
+    "weekly-sonnet": {
+      "utilization": 0.90,
+      "status": "ahead_pace",
+      "resets_in_minutes": null,
+      "resets_in_hours": -1,
+      "window_hours": 168
+    }
+  }
+}

@@ -93,7 +93,7 @@ DIM=$'\033[2m'
 # --- Parse ccburn JSON cache (single jq call) ---
 quota_str=""
 if [ -f "$CACHE_FILE" ]; then
-  read -r sess_pct sess_status sess_reset sess_reset_hrs week_pct week_status week_reset_hrs sonn_pct sonn_status sonn_reset_hrs < <(
+  IFS='|' read -r sess_pct sess_status sess_reset sess_reset_hrs week_pct week_status week_reset_hrs sonn_pct sonn_status sonn_reset_hrs < <(
     "$JQ" -r '[
       (.limits.session.utilization // 0 | . * 100 | round),
       (.limits.session.status // "-"),
@@ -105,7 +105,7 @@ if [ -f "$CACHE_FILE" ]; then
       (.limits."weekly-sonnet".utilization // 0 | . * 100 | round),
       (.limits."weekly-sonnet".status // "-"),
       (.limits."weekly-sonnet".resets_in_hours // 0)
-    ] | join(" ")' "$CACHE_FILE" 2>/dev/null
+    ] | join("|")' "$CACHE_FILE" 2>/dev/null
   )
 
   # If a window has expired (negative time remaining), the API returned stale

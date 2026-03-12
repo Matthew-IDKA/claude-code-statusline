@@ -1,0 +1,4 @@
+{
+  "_comment": "All limit keys absent — simulates a truncated or partial API response. All fields should fall back to jq defaults (0 for numbers, '-' for status).",
+  "limits": {}
+}

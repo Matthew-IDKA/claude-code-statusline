@@ -1,0 +1,25 @@
+{
+  "limits": {
+    "session": {
+      "utilization": 0.04,
+      "status": "on_pace",
+      "resets_in_minutes": 279,
+      "resets_in_hours": null,
+      "window_hours": 5
+    },
+    "weekly": {
+      "utilization": 0.41,
+      "status": "on_pace",
+      "resets_in_minutes": null,
+      "resets_in_hours": 91.65,
+      "window_hours": 168
+    },
+    "weekly-sonnet": {
+      "utilization": 0.37,
+      "status": "behind_pace",
+      "resets_in_minutes": null,
+      "resets_in_hours": 101.65,
+      "window_hours": 168
+    }
+  }
+}
