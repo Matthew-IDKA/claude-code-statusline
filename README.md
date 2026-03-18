@@ -1,6 +1,6 @@
 # Claude Code Status Line
 
-A custom status line for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that displays context window usage, git branch, and API quota burn rates via [ccburn](https://github.com/JuanjoFuchs/ccburn) — with a cool-to-warm color gradient.
+A custom status line for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that displays context window usage, directory and git branch, and API quota burn rates via [ccburn](https://github.com/JuanjoFuchs/ccburn) — with a cool-to-warm color gradient.
 
 ![Claude Code status line screenshot](screenshot.png)
 
@@ -9,7 +9,7 @@ A custom status line for [Claude Code](https://docs.anthropic.com/en/docs/claude
 | Section | Description |
 |---------|-------------|
 | **ctx** | Context window usage. Dynamic color: green (<60%), yellow (60-84%), red (85%+) |
-| **location** | Current git branch, or folder name if not in a repo |
+| **location** | Directory name with git branch (`dir@branch`), or just directory name if not in a repo |
 | **session** | Session quota utilization from ccburn |
 | **reset timer** | Minutes until session quota resets (interpolated from local clock between API polls) |
 | **weekly** | Weekly quota utilization from ccburn |

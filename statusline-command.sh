@@ -3,7 +3,7 @@
 # Claude Code Status Line — rainbow gradient with ccburn quota integration
 # https://github.com/Matthew-IDKA/claude-code-statusline
 #
-# Displays: context% | git branch | session quota | weekly quota (time%) | sonnet quota
+# Displays: context% | dir@branch | session quota | weekly quota (time%) | sonnet quota
 # Colors flow cool-to-warm (magenta → red) left to right.
 #
 # Requirements:
@@ -41,15 +41,16 @@ if [ -z "$cwd" ]; then
   cwd=$(echo "$input" | grep -Eo '"current_dir":"[^"]+"' | cut -d'"' -f4 | sed 's/\\\\/\//g')
 fi
 
-# --- Location: git branch or basename of cwd ---
+# --- Location: dir@branch (git) or dir name (non-git) ---
 if [ -n "$cwd" ]; then
   branch=$(git -C "$cwd" --no-optional-locks rev-parse --abbrev-ref HEAD 2>/dev/null)
 fi
 
+dir_name=$(basename "${cwd:-$PWD}")
 if [ -n "$branch" ]; then
-  location="$branch"
+  location="${dir_name}@${branch}"
 else
-  location=$(basename "${cwd:-$PWD}")
+  location="${dir_name}"
 fi
 
 # --- ccburn quota (cached, refreshed every CACHE_MAX_AGE seconds) ---
