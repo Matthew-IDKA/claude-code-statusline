@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for statusline-command.sh — jq field parsing and alignment.
+# Tests for statusline-command.sh — jq field parsing from native rate_limits JSON.
 #
 # Run: bats tests/statusline.bats
 #
@@ -11,73 +11,59 @@ FIXTURES="$BATS_TEST_DIRNAME/fixtures"
 
 # Mirrors the jq expression in statusline-command.sh
 JQ_EXPR='[
-  (.limits.session.utilization // 0 | . * 100 | round),
-  (.limits.session.status // "-"),
-  (.limits.session.resets_in_minutes // ""),
-  (.limits.session.resets_in_hours // 0),
-  (.limits.weekly.utilization // 0 | . * 100 | round),
-  (.limits.weekly.status // "-"),
-  (.limits.weekly.resets_in_hours // 0),
-  (.limits."weekly-sonnet".utilization // 0 | . * 100 | round),
-  (.limits."weekly-sonnet".status // "-"),
-  (.limits."weekly-sonnet".resets_in_hours // 0)
+  (.context_window.used_percentage // ""),
+  (.cwd // .workspace.current_dir // ""),
+  (.rate_limits.five_hour.used_percentage // ""),
+  (.rate_limits.five_hour.resets_at // ""),
+  (.rate_limits.seven_day.used_percentage // ""),
+  (.rate_limits.seven_day.resets_at // "")
 ] | join("|")'
 
-# Parses a fixture file through the jq expression and populates the 10 variables.
-# Variables are set in global scope (no `local`) so callers can assert them directly.
+# Parses a fixture file through the jq expression and populates the 6 variables.
 parse_fields() {
-  IFS='|' read -r sess_pct sess_status sess_reset sess_reset_hrs \
-    week_pct week_status week_reset_hrs \
-    sonn_pct sonn_status sonn_reset_hrs < <(
-    "$JQ" -r "$JQ_EXPR" "$1" 2>/dev/null
+  IFS='|' read -r used_pct cwd sess_pct sess_resets week_pct week_resets < <(
+    "$JQ" -r "$JQ_EXPR" "$1" 2>/dev/null | tr -d '\r'
   )
 }
 
 # ---------------------------------------------------------------------------
 
-@test "happy path: all 10 fields land in correct variables" {
+@test "happy path: all 6 fields land in correct variables" {
   parse_fields "$FIXTURES/happy.json"
 
-  [ "$sess_pct"       = "4"           ]
-  [ "$sess_status"    = "on_pace"     ]
-  [ "$sess_reset"     = "279"         ]
-  [ "$sess_reset_hrs" = "0"           ]
-  [ "$week_pct"       = "41"          ]
-  [ "$week_status"    = "on_pace"     ]
-  [ "$sonn_pct"       = "37"          ]
-  [ "$sonn_status"    = "behind_pace" ]
+  [ "$used_pct"    = "12"          ]
+  [ "$cwd"         = "D:\\projects\\myapp" ]
+  [ "$sess_pct"    = "8"           ]
+  [ "$sess_resets" = "1773975600"  ]
+  [ "$week_pct"    = "44"          ]
+  [ "$week_resets" = "1774278000"  ]
 }
 
-@test "regression: null resets_in_minutes must not shift week_pct to a status string" {
-  parse_fields "$FIXTURES/null-resets-minutes.json"
-
-  [ "$sess_pct"    = "0"           ]
-  [ "$sess_status" = "-"           ]   # null status falls back to "-"
-  [ "$sess_reset"  = ""            ]   # null resets_in_minutes -> empty, not "0"
-  [ "$week_pct"    = "41"          ]   # must be a number — was "behind_pace" before the fix
-  [ "$week_status" = "behind_pace" ]   # status in its correct variable
-  [ "$sonn_pct"    = "37"          ]   # must be a number — was "on_pace" before the fix
-  [ "$sonn_status" = "on_pace"     ]
-}
-
-@test "expired windows: negative resets_in_hours are preserved for override logic" {
+@test "expired windows: resets_at in the past are preserved for override logic" {
   parse_fields "$FIXTURES/expired.json"
 
-  # Negative values must survive jq // 0 (they are not null, so // doesn't fire)
-  # and must reach the shell as strings starting with '-' so the case pattern matches.
-  [[ "$sess_reset_hrs" == -* ]]
-  [[ "$week_reset_hrs" == -* ]]
-  [[ "$sonn_reset_hrs" == -* ]]
+  [ "$sess_pct"    = "84"          ]
+  [ "$sess_resets" = "1773900000"  ]
+  [ "$week_pct"    = "72"          ]
+  [ "$week_resets" = "1773800000"  ]
 }
 
-@test "empty limits object: all fields fall back to jq defaults" {
+@test "no rate_limits key: quota fields are empty, context still works" {
+  parse_fields "$FIXTURES/no-rate-limits.json"
+
+  [ "$used_pct"    = "42" ]
+  [ "$sess_pct"    = ""   ]
+  [ "$sess_resets" = ""   ]
+  [ "$week_pct"    = ""   ]
+  [ "$week_resets" = ""   ]
+}
+
+@test "empty rate_limits object: quota fields are empty, context still works" {
   parse_fields "$FIXTURES/empty-limits.json"
 
-  [ "$sess_pct"    = "0" ]
-  [ "$sess_status" = "-" ]
-  [ "$sess_reset"  = ""  ]
-  [ "$week_pct"    = "0" ]
-  [ "$week_status" = "-" ]
-  [ "$sonn_pct"    = "0" ]
-  [ "$sonn_status" = "-" ]
+  [ "$used_pct"    = "3"  ]
+  [ "$sess_pct"    = ""   ]
+  [ "$sess_resets" = ""   ]
+  [ "$week_pct"    = ""   ]
+  [ "$week_resets" = ""   ]
 }
