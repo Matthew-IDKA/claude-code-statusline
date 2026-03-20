@@ -1,25 +1,18 @@
 {
-  "limits": {
-    "session": {
-      "utilization": 0.04,
-      "status": "on_pace",
-      "resets_in_minutes": 279,
-      "resets_in_hours": null,
-      "window_hours": 5
+  "context_window": {
+    "used_percentage": 12,
+    "remaining_percentage": 88,
+    "context_window_size": 200000
+  },
+  "cwd": "D:\\projects\\myapp",
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 8,
+      "resets_at": 1773975600
     },
-    "weekly": {
-      "utilization": 0.41,
-      "status": "on_pace",
-      "resets_in_minutes": null,
-      "resets_in_hours": 91.65,
-      "window_hours": 168
-    },
-    "weekly-sonnet": {
-      "utilization": 0.37,
-      "status": "behind_pace",
-      "resets_in_minutes": null,
-      "resets_in_hours": 101.65,
-      "window_hours": 168
+    "seven_day": {
+      "used_percentage": 44,
+      "resets_at": 1774278000
     }
   }
 }
