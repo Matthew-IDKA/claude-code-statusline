@@ -1,41 +1,48 @@
 #!/usr/bin/env bash
 #
-# Claude Code Status Line — rainbow gradient with native rate limit display
+# Claude Code Status Line -- rainbow gradient with native rate limit display
 # https://github.com/Matthew-IDKA/claude-code-statusline
 #
-# Displays: context% | dir@branch | session quota | weekly quota (time%)
-# Colors flow cool-to-warm (magenta -> red) left to right.
+# Displays: ctx% | dir@branch | session quota | weekly quota | model [effort]
+# Colors flow cool-to-warm (blue -> red) left to right across 11 stops.
 #
 # Requirements:
-#   - Claude Code 2.1.80+ (provides rate_limits in status line JSON)
+#   - Claude Code 2.1.80+ (provides rate_limits and model in status line JSON)
 #   - jq for JSON parsing
 #
-# Configuration — edit these values to match your setup:
+# --- Configuration ---
 
 # Path to jq binary (leave as "jq" if it's on your PATH)
 JQ="jq"
+
+# Optional: Prometheus Pushgateway URL (leave empty to disable metrics push)
+# Example: PUSH_GATEWAY_URL="http://your-pushgateway:9091"
+PUSH_GATEWAY_URL=""
 
 # --- end of configuration ---
 
 input=$(cat)
 
 # --- Parse all fields from status line JSON (single jq call) ---
-# tr -d '\r' prevents Windows \r\n from poisoning the last read variable
-IFS='|' read -r used_pct cwd sess_pct sess_resets week_pct week_resets < <(
+IFS='|' read -r used_pct cwd sess_pct sess_resets week_pct week_resets model_id < <(
   echo "$input" | "$JQ" -r '[
     (.context_window.used_percentage // ""),
     (.cwd // .workspace.current_dir // ""),
-    (.rate_limits.five_hour.used_percentage // ""),
+    ((.rate_limits.five_hour.used_percentage // 0) | round),
     (.rate_limits.five_hour.resets_at // ""),
-    (.rate_limits.seven_day.used_percentage // ""),
-    (.rate_limits.seven_day.resets_at // "")
+    ((.rate_limits.seven_day.used_percentage // 0) | round),
+    (.rate_limits.seven_day.resets_at // ""),
+    (.model.id // "")
   ] | join("|")' 2>/dev/null | tr -d '\r'
 )
 
 # Fix Windows path separators for git
 cwd=$(echo "$cwd" | sed 's/\\\\/\//g')
 
-# --- Location: dir@branch (git) or dir name (non-git) ---
+# --- Effort level from settings (not in statusline JSON) ---
+effort=$("$JQ" -r '.effortLevel // ""' "$HOME/.claude/settings.json" 2>/dev/null | tr -d '\r')
+
+# --- Location: git branch or basename of cwd ---
 if [ -n "$cwd" ]; then
   branch=$(git -C "$cwd" --no-optional-locks rev-parse --abbrev-ref HEAD 2>/dev/null)
 fi
@@ -47,20 +54,22 @@ else
   location="${dir_name}"
 fi
 
-# --- ANSI colors (cool-to-warm gradient, left to right) ---
-#     Position:  1:location  2:sess-title  3:sess-value  4:sess-reset
-#                5:week-title  6:week-value  7:week-time%
-MAGENTA=$'\033[35m'        # 1: location
-BLUE=$'\033[34m'           # 2: session title
-CYAN=$'\033[36m'           # 3: session value
-TEAL=$'\033[38;5;30m'      # 4: session reset timer
-GREEN=$'\033[32m'          # 5: weekly title
-LIME=$'\033[38;5;148m'     # 6: weekly value
-YELLOW=$'\033[33m'         # 7: weekly time%
-RED=$'\033[31m'
+# --- ANSI gradient: 11 stops, cool to warm (left to right) ---
+C1=$'\033[38;5;63m'    # ctx label
+C2=$'\033[38;5;69m'    # ctx value (default)
+C3=$'\033[38;5;75m'    # location
+C4=$'\033[38;5;80m'    # session label
+C5=$'\033[38;5;43m'    # session value
+C6=$'\033[38;5;114m'   # session timer
+C7=$'\033[38;5;150m'   # weekly label
+C8=$'\033[38;5;186m'   # weekly value
+C9=$'\033[38;5;222m'   # weekly time%
+C10=$'\033[38;5;209m'  # model
+C11=$'\033[38;5;203m'  # effort
 RESET=$'\033[0m'
 BOLD=$'\033[1m'
-DIM=$'\033[2m'
+CTX_YELLOW=$'\033[38;5;220m'  # ctx value: approaching limit
+CTX_RED=$'\033[38;5;196m'     # ctx value: near limit
 
 # --- Compute pace from native rate_limits ---
 now=$(date +%s)
@@ -116,26 +125,62 @@ if [ -n "$sess_pct" ] && [ -n "$sess_resets" ]; then
     week_icon="="
   fi
 
-  quota_str="${BLUE}session: ${CYAN}${sess_pct}%_${sess_icon}${RESET} ${TEAL}${sess_reset_min}m${RESET}    ${GREEN}weekly: ${LIME}${week_pct}%_${week_icon}${RESET} ${YELLOW}(${time_pct}%)${RESET}"
+  quota_str="${C4}session: ${C5}${sess_pct}%_${sess_icon}${RESET} ${C6}${sess_reset_min}m${RESET}    ${C7}weekly: ${C8}${week_pct}%_${week_icon}${RESET} ${C9}(${time_pct}%)${RESET}"
 fi
 
-# --- Color-code context usage ---
+# --- Context usage with dynamic color ---
 if [ -n "$used_pct" ]; then
-  if [ "$used_pct" -ge 85 ] 2>/dev/null; then
-    ctx_color="$RED"
-  elif [ "$used_pct" -ge 60 ] 2>/dev/null; then
-    ctx_color="$YELLOW"
-  else
-    ctx_color="$GREEN"
+  ctx_int=${used_pct%.*}
+  if   [ "${ctx_int:-0}" -ge 85 ]; then ctx_val_color=$CTX_RED
+  elif [ "${ctx_int:-0}" -ge 60 ]; then ctx_val_color=$CTX_YELLOW
+  else ctx_val_color=$C2
   fi
-  ctx_str="${ctx_color}${BOLD}ctx:${used_pct}%${RESET}"
+  ctx_str="${C1}${BOLD}ctx:${RESET}${ctx_val_color}${used_pct}%${RESET}"
 else
-  ctx_str="${DIM}ctx:--${RESET}"
+  ctx_str="${C1}ctx:--${RESET}"
+fi
+
+# --- Model + effort tag ---
+model_str=""
+if [ -n "$model_id" ]; then
+  short_model="${model_id#claude-}"
+  if [ -n "$effort" ]; then
+    model_str="${C10}${short_model}${RESET} ${C11}[${effort}]${RESET}"
+  else
+    model_str="${C10}${short_model}${RESET}"
+  fi
 fi
 
 # --- Assemble output ---
 if [ -n "$quota_str" ]; then
-  printf '%s\n' "${ctx_str}    ${MAGENTA}${location}${RESET}    ${quota_str}"
+  printf '%s\n' "${ctx_str}    ${C3}${location}${RESET}    ${quota_str}    ${model_str}"
 else
-  printf '%s\n' "${ctx_str}    ${MAGENTA}${location}${RESET}"
+  printf '%s\n' "${ctx_str}    ${C3}${location}${RESET}    ${model_str}"
+fi
+
+# --- Push metrics to Prometheus Pushgateway (throttled, background) ---
+# Only runs if PUSH_GATEWAY_URL is set above. Throttled to once per 15 minutes.
+PUSH_STAMP="$HOME/.claude/.ccburn-push-stamp"
+PUSH_INTERVAL=900  # 15 minutes
+if [ -n "$PUSH_GATEWAY_URL" ] && [ -n "$sess_pct" ]; then
+  do_push=0
+  if [ -f "$PUSH_STAMP" ]; then
+    stamp_age=$(( now - $(date -r "$PUSH_STAMP" +%s 2>/dev/null || echo 0) ))
+    [ "$stamp_age" -ge "$PUSH_INTERVAL" ] && do_push=1
+  else
+    do_push=1
+  fi
+  if [ "$do_push" -eq 1 ]; then
+    touch "$PUSH_STAMP"
+    {
+      push_body="# TYPE ccburn_utilization gauge
+ccburn_utilization{limit=\"session\"} $(awk "BEGIN{printf \"%.4f\", $sess_pct/100}")
+ccburn_utilization{limit=\"weekly\"} $(awk "BEGIN{printf \"%.4f\", $week_pct/100}")
+# TYPE ccburn_budget_pace gauge
+ccburn_budget_pace{limit=\"session\"} $(awk "BEGIN{printf \"%.4f\", $sess_elapsed/18000}")
+ccburn_budget_pace{limit=\"weekly\"} $(awk "BEGIN{printf \"%.4f\", $week_elapsed/604800}")"
+      printf '%s\n' "$push_body" | tr -d '\r' | curl -s --connect-timeout 3 --max-time 5 --data-binary @- \
+        "${PUSH_GATEWAY_URL}/metrics/job/ccburn/instance/$(uname -n)" >/dev/null 2>&1
+    } &
+  fi
 fi
