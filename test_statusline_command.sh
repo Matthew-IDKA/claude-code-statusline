@@ -198,6 +198,26 @@ OUTPUT=$(run_script "$INPUT")
 assert_contains "expired session shows 0%" "0%_" "$OUTPUT"
 
 # ════════════════════════════════════════════════════════════════════
+# Test 10: STATUSLINE_JQ env override
+# ════════════════════════════════════════════════════════════════════
+echo "Test 10: STATUSLINE_JQ env override"
+# Point STATUSLINE_JQ at the real jq via an explicit path; output should be
+# identical to the default (jq-on-PATH) behavior.
+JQ_PATH="$(command -v jq)"
+INPUT=$(make_input 42 "/home/user/project" 25 $((NOW + 14400)) 15 $((NOW + 518400)))
+OUTPUT=$(echo "$INPUT" | STATUSLINE_JQ="$JQ_PATH" GIT_DIR=/dev/null bash "$SCRIPT" 2>/dev/null | strip_ansi)
+assert_contains "override renders ctx" "ctx:42%" "$OUTPUT"
+assert_contains "override renders session" "session:" "$OUTPUT"
+
+# ════════════════════════════════════════════════════════════════════
+# Test 11: jq not found -> graceful hint, not empty bar
+# ════════════════════════════════════════════════════════════════════
+echo "Test 11: jq not resolvable shows hint"
+INPUT=$(make_input 42 "/home/user/project" 25 $((NOW + 14400)) 15 $((NOW + 518400)))
+OUTPUT=$(echo "$INPUT" | STATUSLINE_JQ="/nonexistent/jq" GIT_DIR=/dev/null bash "$SCRIPT" 2>/dev/null | strip_ansi)
+assert_contains "missing jq shows hint" "jq not found" "$OUTPUT"
+
+# ════════════════════════════════════════════════════════════════════
 # Summary
 # ════════════════════════════════════════════════════════════════════
 echo ""

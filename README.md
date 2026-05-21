@@ -65,11 +65,24 @@ Edit the variables at the top of `statusline-command.sh`:
 
 ### jq path
 
-If `jq` is on your PATH, the default works. Otherwise, set the full path:
+If `jq` is on your PATH, the default works. Otherwise either edit the `JQ`
+variable in the script:
 
 ```bash
 JQ="/usr/local/bin/jq"
 ```
+
+…or, to avoid editing the script, point the `STATUSLINE_JQ` environment
+variable at your jq binary (useful on Windows Git-Bash, where jq is often
+not on PATH):
+
+```bash
+export STATUSLINE_JQ="/c/Users/you/AppData/Local/.../jq.exe"
+```
+
+If jq can't be resolved at all, the status line renders
+`ctx:-- (jq not found -- set STATUSLINE_JQ to its path)` instead of an empty
+bar, so the misconfiguration is visible.
 
 ## Customizing colors
 
