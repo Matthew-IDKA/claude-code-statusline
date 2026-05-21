@@ -12,8 +12,11 @@
 #
 # --- Configuration ---
 
-# Path to jq binary (leave as "jq" if it's on your PATH)
-JQ="jq"
+# Path to jq binary. Defaults to "jq" (must be on PATH). Override without
+# editing this file via the STATUSLINE_JQ environment variable -- handy on
+# Windows Git-Bash, where jq often isn't on PATH:
+#   export STATUSLINE_JQ="/c/Users/you/AppData/Local/.../jq.exe"
+JQ="${STATUSLINE_JQ:-jq}"
 
 # Optional: Prometheus Pushgateway URL (leave empty to disable metrics push)
 # Example: PUSH_GATEWAY_URL="http://your-pushgateway:9091"
@@ -22,6 +25,12 @@ PUSH_GATEWAY_URL=""
 # --- end of configuration ---
 
 input=$(cat)
+
+# --- Verify jq is resolvable; show a clear hint instead of an empty bar ---
+if ! command -v "$JQ" >/dev/null 2>&1; then
+  printf 'ctx:-- (jq not found -- set STATUSLINE_JQ to its path)'
+  exit 0
+fi
 
 # --- Parse all fields from status line JSON (single jq call) ---
 IFS='|' read -r used_pct cwd sess_pct sess_resets week_pct week_resets model_id < <(
