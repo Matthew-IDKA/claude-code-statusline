@@ -1,3 +1,5 @@
+* text=auto eol=lf
+
 .gitleaks.toml        text eol=lf
 .githooks/pre-commit  text eol=lf
 *.sh                  text eol=lf
