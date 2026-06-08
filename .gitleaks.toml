@@ -80,7 +80,11 @@ regexes = [
   '''--must-change-password''',
   # Placeholder variable references in docs/examples
   '''\$PAPERLESS_TOKEN''',
+  # Vikunja API token env var: VIKUNJA_CLAUDE_TOKEN is the secrets_policy.md
+  # 2.5/2.7 canonical name (#1268/#1396 rename); $VIKUNJA_TOKEN is the
+  # deprecated legacy name, retained transitionally until confirmed unused.
   '''\$VIKUNJA_TOKEN''',
+  '''\$VIKUNJA_CLAUDE_TOKEN''',
   '''\$ANTHROPIC_API_KEY''',
 ]
 
