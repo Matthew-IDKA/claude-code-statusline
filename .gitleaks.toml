@@ -48,6 +48,19 @@ description = "curl -u/--user with a literal basic-auth password. Variable refs 
 regex = '''(?i)\bcurl\b[^\n]*?-(?:u|-user)[ =]+["']?[A-Za-z0-9._%+-]+:[^\s"'$]{8,}'''
 tags = ["api", "basic-auth", "generic"]
 
+[[rules]]
+id = "headscale-api-key"
+description = "Headscale pre-auth/API key (hskey- prefix); caught even with no adjacent keyword."
+regex = '''hskey-[A-Za-z0-9._-]{20,}'''
+tags = ["api", "headscale", "homelab"]
+
+[[rules]]
+id = "crowdsec-enrollment-key"
+description = "CrowdSec enrollment key -- var assignment or `cscli console enroll <key>`; secretGroup=1 redacts value-only, avoids over-matching a bare CUID."
+regex = '''(?i)(?:crowdsec_enrollment_key|cscli\s+console\s+enroll)["'\s:=]+([a-z0-9]{20,})'''
+secretGroup = 1
+tags = ["api", "crowdsec", "homelab"]
+
 # Surface 2 -- documentation drift (secrets_policy.md 3.4). Scoped to doc/manifest
 # paths: fail on a literal value assigned to a <SERVICE>_<KIND> var. Docs must name
 # vars and reference them with $-syntax, never embed the value. References that pass:
